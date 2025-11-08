@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Test VPC Network
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Description: VPC Subnet
+    Default: 172.20.0.0/16
+  SubnetCidr1:
+    Type: String
+    Description: Subnet1 cidr
+    Default: 172.20.0.0/24
+  SubnetCidr2:
+    Type: String
+    Description: Subnet2 Cidr
+    Default: 172.20.1.0/24
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: True
+      EnableDnsSupport: True
+      InstanceTenancy: default
+
+  Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: !Ref SubnetCidr1
+      EnableDns64: False
+      MapPublicIpOnLaunch: False
+      VpcId: !Ref VPC
+
+  Subnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}b
+      CidrBlock: !Ref SubnetCidr1
+      EnableDns64: False
+      MapPublicIpOnLaunch: False
+      VpcId: !Ref VPC
+  
+Outputs:
+  VpcId:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${AWS::Stackname}-vpcid
+  Subnet1Id:
+    Value: !Ref Subnet1
+    Export:
+      Name: !Ref ${AWS::StackName}-subnet1-id
+  Subnet2Id:
+    Value: !Ref Subnet2
+    Export:
+      Name: !Ref ${AWS::StackName}-subnet2-id
