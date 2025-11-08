@@ -46,7 +46,7 @@ Outputs:
   VpcId:
     Value: !Ref VPC
     Export:
-      Name: !Sub ${AWS::Stackname}-vpcid
+      Name: !Sub ${AWS::StackName}-vpcid
   Subnet1Id:
     Value: !Ref Subnet1
     Export:
