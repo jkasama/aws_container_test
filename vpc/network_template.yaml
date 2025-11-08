@@ -14,6 +14,14 @@ Parameters:
     Type: String
     Description: Subnet2 Cidr
     Default: 172.20.1.0/24
+  ALBSubnetCidr1:
+    Type: String
+    Description: Subnet1 cidr
+    Default: 172.20.2.0/24
+  ALBSubnetCidr2:
+    Type: String
+    Description: Subnet2 Cidr
+    Default: 172.20.3.0/24
 
 Resources:
   VPC:
@@ -41,6 +49,25 @@ Resources:
       EnableDns64: False
       MapPublicIpOnLaunch: False
       VpcId: !Ref VPC
+
+  ALBSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: !Ref ALBSubnetCidr1
+      EnableDns64: False
+      MapPublicIpOnLaunch: False
+      VpcId: !Ref VPC
+
+  ALBSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}b
+      CidrBlock: !Ref ALBSubnetCidr2
+      EnableDns64: False
+      MapPublicIpOnLaunch: False
+      VpcId: !Ref VPC
+  
   
 Outputs:
   VpcId:
@@ -55,3 +82,11 @@ Outputs:
     Value: !Ref Subnet2
     Export:
       Name: !Sub ${AWS::StackName}-subnet2-id
+  ALBSubnet1Id:
+    Value: !Ref ALBSubnet1
+    Export:
+      Name: !Sub ${AWS::StackName}-alb-subnet1-id
+  ALBSubnet2Id:
+    Value: !Ref ALBSubnet2
+    Export:
+      Name: !Sub ${AWS::StackName}-alb-subnet2-id
