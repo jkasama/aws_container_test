@@ -50,8 +50,8 @@ Outputs:
   Subnet1Id:
     Value: !Ref Subnet1
     Export:
-      Name: !Ref ${AWS::StackName}-subnet1-id
+      Name: !Sub ${AWS::StackName}-subnet1-id
   Subnet2Id:
     Value: !Ref Subnet2
     Export:
-      Name: !Ref ${AWS::StackName}-subnet2-id
+      Name: !Sub ${AWS::StackName}-subnet2-id
