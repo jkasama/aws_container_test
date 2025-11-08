@@ -37,7 +37,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone: !Sub ${AWS::Region}b
-      CidrBlock: !Ref SubnetCidr1
+      CidrBlock: !Ref SubnetCidr2
       EnableDns64: False
       MapPublicIpOnLaunch: False
       VpcId: !Ref VPC
