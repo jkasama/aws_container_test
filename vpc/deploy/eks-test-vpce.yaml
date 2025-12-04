@@ -1,0 +1,3 @@
+template-file-path: vpc/vpce_template.yaml
+parameters: {}
+tags: {}

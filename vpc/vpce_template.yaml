@@ -1,0 +1,288 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC Endpoint configuration for EKS Private Subnet deployment'
+
+Parameters:
+  NetworkStackName:
+    Type: String
+    Default: 'eks-test-network'
+    Description: Name of the network stack to import VPC and Subnet IDs from
+  
+  SecurityGroupStackName:
+    Type: String
+    Default: 'eks-test-sg'
+    Description: Name of the security group stack to import SG ID from
+
+Resources:
+  # VPC Endpoint for EKS
+  EksVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.eks'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+  # VPC Endpoint for ECR API
+  EcrApiVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+  # VPC Endpoint for ECR Docker
+  EcrDkrVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+  # VPC Endpoint for CloudWatch Logs
+  LogsVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+  # VPC Endpoint for S3 (Gateway type - required for ECR image layers)
+  S3VpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-PrivateRouteTable'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+  # VPC Endpoint for EC2 (required for EKS node management)
+  Ec2VpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ec2'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+  # VPC Endpoint for STS (required for IAM roles for service accounts)
+  StsVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sts'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+  # VPC Endpoint for Auto Scaling (required for Cluster Autoscaler)
+  AutoscalingVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.autoscaling'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+  # VPC Endpoint for Elastic Load Balancing (required for ALB/NLB creation)
+  ElbVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.elasticloadbalancing'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+Outputs:
+  EksVpcEndpointId:
+    Description: VPC Endpoint ID for EKS
+    Value: !Ref EksVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-EksVpceId'
+
+  EcrApiVpcEndpointId:
+    Description: VPC Endpoint ID for ECR API
+    Value: !Ref EcrApiVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-EcrApiVpceId'
+
+  EcrDkrVpcEndpointId:
+    Description: VPC Endpoint ID for ECR Docker
+    Value: !Ref EcrDkrVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-EcrDkrVpceId'
+
+  LogsVpcEndpointId:
+    Description: VPC Endpoint ID for CloudWatch Logs
+    Value: !Ref LogsVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-LogsVpceId'
+
+  S3VpcEndpointId:
+    Description: VPC Endpoint ID for S3
+    Value: !Ref S3VpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-S3VpceId'
+
+  Ec2VpcEndpointId:
+    Description: VPC Endpoint ID for EC2
+    Value: !Ref Ec2VpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-Ec2VpceId'
+
+  StsVpcEndpointId:
+    Description: VPC Endpoint ID for STS
+    Value: !Ref StsVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-StsVpceId'
+
+  AutoscalingVpcEndpointId:
+    Description: VPC Endpoint ID for Auto Scaling
+    Value: !Ref AutoscalingVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-AutoscalingVpceId'
+
+  ElbVpcEndpointId:
+    Description: VPC Endpoint ID for Elastic Load Balancing
+    Value: !Ref ElbVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-ElbVpceId'
