@@ -105,8 +105,6 @@ Resources:
       IamInstanceProfile: !Ref Ec2InstanceProfile
       SubnetId: !ImportValue
         Fn::Sub: '${NetworkStackName}-NlbSubnet01a'
-      SecurityGroupIds:
-        - !Ref Ec2InstanceSecurityGroup
       KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref 'AWS::NoValue']
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
