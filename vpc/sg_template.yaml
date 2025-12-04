@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Security Group configuration for EKS VPC'
+
+Parameters:
+  NetworkStackName:
+    Type: String
+    Default: 'eks-test-network'
+    Description: Name of the network stack to import VPC ID from
+  
+  VpcCidrBlock:
+    Type: String
+    Default: '172.26.0.0/16'
+    Description: CIDR block of the VPC (must match the VPC configuration)
+    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))'
+
+Resources:
+  # Security Group for VPC Endpoints
+  EksVpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: eks-test-sg-vpce
+      GroupDescription: Security group for VPC endpoints allowing HTTPS traffic from VPC
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !ImportValue
+            Fn::Sub: '${NetworkStackName}-VpcCidr'
+          Description: Allow HTTPS traffic from VPC
+      Tags:
+        - Key: Name
+          Value: eks-test-sg-vpce
+
+Outputs:
+  VpcEndpointSecurityGroupId:
+    Description: Security Group ID for VPC Endpoints
+    Value: !Ref EksVpcEndpointSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcEndpointSgId'
+  
+  VpcEndpointSecurityGroupName:
+    Description: Security Group Name for VPC Endpoints
+    Value: !GetAtt EksVpcEndpointSecurityGroup.GroupId
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcEndpointSgName'

@@ -187,7 +187,11 @@ Outputs:
     Value: !Ref EksVpc
     Export:
       Name: !Sub '${AWS::StackName}-VpcId'
-
+  VpcCidr:
+    Description: VPC CIDR Block
+    Value: !GetAtt EksVpc.CidrBlock
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcCidr'
   WorkSubnet01aId:
     Description: Private Subnet 1a ID
     Value: !Ref WorkSubnet01a
