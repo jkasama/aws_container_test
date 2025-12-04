@@ -40,7 +40,7 @@ Resources:
   Ec2InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: eks-test-sg-ec2-bastion
+      GroupName: eks-test-sg-ec2-bastion-v2
       GroupDescription: Security group for EC2 bastion instance in public subnet
       VpcId: !ImportValue
         Fn::Sub: '${NetworkStackName}-VpcId'
