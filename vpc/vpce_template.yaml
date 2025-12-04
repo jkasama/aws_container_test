@@ -232,6 +232,81 @@ Resources:
             Action: '*'
             Resource: '*'
 
+  # VPC Endpoint for SSM (required for Systems Manager Session Manager)
+  SsmVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ssm'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+  # VPC Endpoint for SSM Messages (required for Session Manager)
+  SsmMessagesVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ssmmessages'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
+  # VPC Endpoint for EC2 Messages (required for Session Manager)
+  Ec2MessagesVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ec2messages'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        - !ImportValue
+            Fn::Sub: '${NetworkStackName}-WorkSubnet01c'
+      SecurityGroupIds:
+        - !ImportValue
+            Fn::Sub: '${SecurityGroupStackName}-VpcEndpointSgId'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+
 Outputs:
   EksVpcEndpointId:
     Description: VPC Endpoint ID for EKS
@@ -286,3 +361,21 @@ Outputs:
     Value: !Ref ElbVpcEndpoint
     Export:
       Name: !Sub '${AWS::StackName}-ElbVpceId'
+
+  SsmVpcEndpointId:
+    Description: VPC Endpoint ID for SSM
+    Value: !Ref SsmVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-SsmVpceId'
+
+  SsmMessagesVpcEndpointId:
+    Description: VPC Endpoint ID for SSM Messages
+    Value: !Ref SsmMessagesVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-SsmMessagesVpceId'
+
+  Ec2MessagesVpcEndpointId:
+    Description: VPC Endpoint ID for EC2 Messages
+    Value: !Ref Ec2MessagesVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-Ec2MessagesVpceId'
