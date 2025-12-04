@@ -55,6 +55,16 @@ Resources:
       SourceSecurityGroupId: !Ref EksClusterSecurityGroup
       Description: Allow HTTPS from worker nodes to cluster control plane
 
+  EksClusterIngressFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EksClusterSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: !Ref VpcCidrBlock
+      Description: Allow HTTPS from worker nodes to cluster control plane
+
 Outputs:
   VpcEndpointSecurityGroupId:
     Description: Security Group ID for VPC Endpoints
