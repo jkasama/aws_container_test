@@ -1,0 +1,3 @@
+template-file-path: vpc/sg_template.yaml
+parameters: {}
+tags: {}
