@@ -1,0 +1,174 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EC2 instance deployment in Private Subnet for EKS management'
+
+Parameters:
+  NetworkStackName:
+    Type: String
+    Default: 'eks-test-network'
+    Description: Name of the network stack to import VPC and Subnet IDs from
+  
+  SecurityGroupStackName:
+    Type: String
+    Default: 'eks-test-sg'
+    Description: Name of the security group stack to import SG ID from
+  
+  InstanceType:
+    Type: String
+    Default: 't3.small'
+    Description: EC2 instance type
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+  
+  KeyPairName:
+    Type: String
+    Description: EC2 Key Pair name for SSH access (optional)
+    Default: ''
+  
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+    Description: SSM parameter for latest Amazon Linux 2023 AMI ID
+
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, '']]
+
+Resources:
+  # Security Group for EC2 instance
+  Ec2InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: eks-test-sg-ec2-bastion
+      GroupDescription: Security group for EC2 bastion instance in private subnet (SSM access only)
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: eks-test-sg-ec2-bastion
+
+  # IAM Role for EC2 instance
+  Ec2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: eks-test-ec2-instance-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: EKSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - eks:DescribeCluster
+                  - eks:ListClusters
+                  - eks:DescribeNodegroup
+                  - eks:ListNodegroups
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: eks-test-ec2-instance-role
+
+  # Instance Profile
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: eks-test-ec2-instance-profile
+      Roles:
+        - !Ref Ec2InstanceRole
+
+  # EC2 Instance
+  Ec2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      SubnetId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+      SecurityGroupIds:
+        - !Ref Ec2InstanceSecurityGroup
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref 'AWS::NoValue']
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          
+          # Update system
+          dnf update -y
+          
+          # Install kubectl
+          curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.33.0/2025-01-16/bin/linux/amd64/kubectl
+          chmod +x ./kubectl
+          mkdir -p /usr/local/bin
+          mv ./kubectl /usr/local/bin/
+          
+          # Install AWS CLI v2 (already included in AL2023, but update to latest)
+          dnf install -y aws-cli
+          
+          # Install git
+          dnf install -y git
+          
+          # Install Docker
+          dnf install -y docker
+          systemctl start docker
+          systemctl enable docker
+          usermod -aG docker ec2-user
+          
+          # Install other useful tools
+          dnf install -y jq tmux vim
+          
+          # Configure kubectl bash completion
+          echo 'source <(kubectl completion bash)' >> /home/ec2-user/.bashrc
+          echo 'alias k=kubectl' >> /home/ec2-user/.bashrc
+          echo 'complete -o default -F __start_kubectl k' >> /home/ec2-user/.bashrc
+          
+          # Create a marker file to indicate setup completion
+          touch /home/ec2-user/setup-complete.txt
+          chown ec2-user:ec2-user /home/ec2-user/setup-complete.txt
+          
+      Tags:
+        - Key: Name
+          Value: eks-test-bastion
+
+Outputs:
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref Ec2Instance
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceId'
+
+  InstancePrivateIp:
+    Description: Private IP address of the EC2 instance
+    Value: !GetAtt Ec2Instance.PrivateIp
+    Export:
+      Name: !Sub '${AWS::StackName}-InstancePrivateIp'
+
+  InstanceSecurityGroupId:
+    Description: Security Group ID for EC2 instance
+    Value: !Ref Ec2InstanceSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceSgId'
+
+  InstanceRoleArn:
+    Description: IAM Role ARN for EC2 instance
+    Value: !GetAtt Ec2InstanceRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceRoleArn'
+
+  SsmConnectionCommand:
+    Description: AWS Systems Manager Session Manager connection command
+    Value: !Sub 'aws ssm start-session --target ${Ec2Instance} --region ${AWS::Region}'
