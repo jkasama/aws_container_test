@@ -41,9 +41,15 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: eks-test-sg-ec2-bastion
-      GroupDescription: Security group for EC2 bastion instance in private subnet (SSM access only)
+      GroupDescription: Security group for EC2 bastion instance in public subnet
       VpcId: !ImportValue
         Fn::Sub: '${NetworkStackName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: Allow SSH access from internet
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
@@ -98,10 +104,17 @@ Resources:
       InstanceType: !Ref InstanceType
       IamInstanceProfile: !Ref Ec2InstanceProfile
       SubnetId: !ImportValue
-        Fn::Sub: '${NetworkStackName}-WorkSubnet01a'
+        Fn::Sub: '${NetworkStackName}-NlbSubnet01a'
       SecurityGroupIds:
         - !Ref Ec2InstanceSecurityGroup
       KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref 'AWS::NoValue']
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: '0'
+          SubnetId: !ImportValue
+            Fn::Sub: '${NetworkStackName}-NlbSubnet01a'
+          GroupSet:
+            - !Ref Ec2InstanceSecurityGroup
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -157,6 +170,12 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-InstancePrivateIp'
 
+  InstancePublicIp:
+    Description: Public IP address of the EC2 instance
+    Value: !GetAtt Ec2Instance.PublicIp
+    Export:
+      Name: !Sub '${AWS::StackName}-InstancePublicIp'
+
   InstanceSecurityGroupId:
     Description: Security Group ID for EC2 instance
     Value: !Ref Ec2InstanceSecurityGroup
@@ -172,3 +191,7 @@ Outputs:
   SsmConnectionCommand:
     Description: AWS Systems Manager Session Manager connection command
     Value: !Sub 'aws ssm start-session --target ${Ec2Instance} --region ${AWS::Region}'
+
+  SshConnectionCommand:
+    Description: SSH connection command
+    Value: !Sub 'ssh -i your-key.pem ec2-user@${Ec2Instance.PublicIp}'
