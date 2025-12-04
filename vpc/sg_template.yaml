@@ -26,12 +26,34 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: !ImportValue
-            Fn::Sub: '${NetworkStackName}-VpcCidr'
+          CidrIp: !Ref VpcCidrBlock
           Description: Allow HTTPS traffic from VPC
       Tags:
         - Key: Name
           Value: eks-test-sg-vpce
+
+  # Security Group for EKS Cluster Control Plane ENI
+  EksClusterSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: eks-test-sg-cluster
+      GroupDescription: Security group for EKS cluster control plane ENI
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkStackName}-VpcId'
+      Tags:
+        - Key: Name
+          Value: eks-test-sg-cluster
+
+  # Allow ingress from worker nodes to cluster
+  EksClusterIngressFromWorkers:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EksClusterSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref EksClusterSecurityGroup
+      Description: Allow HTTPS from worker nodes to cluster control plane
 
 Outputs:
   VpcEndpointSecurityGroupId:
@@ -45,3 +67,15 @@ Outputs:
     Value: !GetAtt EksVpcEndpointSecurityGroup.GroupId
     Export:
       Name: !Sub '${AWS::StackName}-VpcEndpointSgName'
+
+  ClusterSecurityGroupId:
+    Description: Security Group ID for EKS Cluster Control Plane ENI
+    Value: !Ref EksClusterSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterSgId'
+  
+  ClusterSecurityGroupName:
+    Description: Security Group Name for EKS Cluster Control Plane
+    Value: !GetAtt EksClusterSecurityGroup.GroupId
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterSgName'
