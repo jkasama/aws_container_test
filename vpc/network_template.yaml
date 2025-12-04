@@ -1,92 +1,225 @@
-AWSTemplateFormatVersion: 2010-09-09
-Description: Test VPC Network
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC and Subnet configuration for EKS cluster in Tokyo region'
 
 Parameters:
-  VpcCidr:
+  VpcCidrBlock:
     Type: String
-    Description: VPC Subnet
-    Default: 172.20.0.0/16
-  SubnetCidr1:
+    Default: '172.26.0.0/16'
+    Description: CIDR block for VPC
+    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$'
+  
+  WorkSubnet01aCidrBlock:
     Type: String
-    Description: Subnet1 cidr
-    Default: 172.20.0.0/24
-  SubnetCidr2:
+    Default: '172.26.0.0/24'
+    Description: CIDR block for eks-work-subnet-01a
+    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$'
+  
+  WorkSubnet01cCidrBlock:
     Type: String
-    Description: Subnet2 Cidr
-    Default: 172.20.1.0/24
-  ALBSubnetCidr1:
+    Default: '172.26.1.0/24'
+    Description: CIDR block for eks-work-subnet-01c
+    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$'
+  
+  NlbSubnet01aCidrBlock:
     Type: String
-    Description: Subnet1 cidr
-    Default: 172.20.2.0/24
-  ALBSubnetCidr2:
+    Default: '172.26.2.0/24'
+    Description: CIDR block for eks-nlb-subnet-01a
+    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$'
+  
+  NlbSubnet01cCidrBlock:
     Type: String
-    Description: Subnet2 Cidr
-    Default: 172.20.3.0/24
+    Default: '172.26.3.0/24'
+    Description: CIDR block for eks-nlb-subnet-01c
+    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$'
+  
+  EksClusterName:
+    Type: String
+    Default: 'eks-test-cluster'
+    Description: Name of the EKS cluster for tagging subnets
 
 Resources:
-  VPC:
+  # VPC
+  EksVpc:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: !Ref VpcCidr
-      EnableDnsHostnames: True
-      EnableDnsSupport: True
+      CidrBlock: !Ref VpcCidrBlock
       InstanceTenancy: default
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: eks-test-vpc
 
-  Subnet1:
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: eks-test-igw
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref EksVpc
+      InternetGatewayId: !Ref InternetGateway
+
+  # Private Subnet 1 (ap-northeast-1a)
+  WorkSubnet01a:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Sub ${AWS::Region}a
-      CidrBlock: !Ref SubnetCidr1
-      EnableDns64: False
-      MapPublicIpOnLaunch: False
-      VpcId: !Ref VPC
+      VpcId: !Ref EksVpc
+      CidrBlock: !Ref WorkSubnet01aCidrBlock
+      AvailabilityZone: ap-northeast-1a
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: eks-work-subnet-01a
+        - Key: kubernetes.io/role/internal-elb
+          Value: '1'
+        - Key: !Sub 'kubernetes.io/cluster/${EksClusterName}'
+          Value: shared
 
-  Subnet2:
+  # Private Subnet 2 (ap-northeast-1c)
+  WorkSubnet01c:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Sub ${AWS::Region}b
-      CidrBlock: !Ref SubnetCidr2
-      EnableDns64: False
-      MapPublicIpOnLaunch: False
-      VpcId: !Ref VPC
+      VpcId: !Ref EksVpc
+      CidrBlock: !Ref WorkSubnet01cCidrBlock
+      AvailabilityZone: ap-northeast-1c
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: eks-work-subnet-01c
+        - Key: kubernetes.io/role/internal-elb
+          Value: '1'
+        - Key: !Sub 'kubernetes.io/cluster/${EksClusterName}'
+          Value: shared
 
-  ALBSubnet1:
+  # Public Subnet 3 (ap-northeast-1a)
+  NlbSubnet01a:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Sub ${AWS::Region}a
-      CidrBlock: !Ref ALBSubnetCidr1
-      EnableDns64: False
-      MapPublicIpOnLaunch: False
-      VpcId: !Ref VPC
+      VpcId: !Ref EksVpc
+      CidrBlock: !Ref NlbSubnet01aCidrBlock
+      AvailabilityZone: ap-northeast-1a
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: eks-nlb-subnet-01a
+        - Key: kubernetes.io/role/elb
+          Value: '1'
+        - Key: !Sub 'kubernetes.io/cluster/${EksClusterName}'
+          Value: shared
 
-  ALBSubnet2:
+  # Public Subnet 4 (ap-northeast-1c)
+  NlbSubnet01c:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Sub ${AWS::Region}b
-      CidrBlock: !Ref ALBSubnetCidr2
-      EnableDns64: False
-      MapPublicIpOnLaunch: False
-      VpcId: !Ref VPC
-  
-  
+      VpcId: !Ref EksVpc
+      CidrBlock: !Ref NlbSubnet01cCidrBlock
+      AvailabilityZone: ap-northeast-1c
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: eks-nlb-subnet-01c
+        - Key: kubernetes.io/role/elb
+          Value: '1'
+        - Key: !Sub 'kubernetes.io/cluster/${EksClusterName}'
+          Value: shared
+
+  # Private Route Table
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EksVpc
+      Tags:
+        - Key: Name
+          Value: eks-private-rtb
+
+  # Public Route Table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EksVpc
+      Tags:
+        - Key: Name
+          Value: eks-public-rtb
+
+  # Public Route to Internet Gateway
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # Route Table Associations - Private Subnets
+  WorkSubnet01aRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref WorkSubnet01a
+      RouteTableId: !Ref PrivateRouteTable
+
+  WorkSubnet01cRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref WorkSubnet01c
+      RouteTableId: !Ref PrivateRouteTable
+
+  # Route Table Associations - Public Subnets
+  NlbSubnet01aRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref NlbSubnet01a
+      RouteTableId: !Ref PublicRouteTable
+
+  NlbSubnet01cRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref NlbSubnet01c
+      RouteTableId: !Ref PublicRouteTable
+
 Outputs:
   VpcId:
-    Value: !Ref VPC
+    Description: VPC ID
+    Value: !Ref EksVpc
     Export:
-      Name: !Sub ${AWS::StackName}-vpcid
-  Subnet1Id:
-    Value: !Ref Subnet1
+      Name: !Sub '${AWS::StackName}-VpcId'
+
+  WorkSubnet01aId:
+    Description: Private Subnet 1a ID
+    Value: !Ref WorkSubnet01a
     Export:
-      Name: !Sub ${AWS::StackName}-subnet1-id
-  Subnet2Id:
-    Value: !Ref Subnet2
+      Name: !Sub '${AWS::StackName}-WorkSubnet01a'
+
+  WorkSubnet01cId:
+    Description: Private Subnet 1c ID
+    Value: !Ref WorkSubnet01c
     Export:
-      Name: !Sub ${AWS::StackName}-subnet2-id
-  ALBSubnet1Id:
-    Value: !Ref ALBSubnet1
+      Name: !Sub '${AWS::StackName}-WorkSubnet01c'
+
+  NlbSubnet01aId:
+    Description: Public Subnet 1a ID
+    Value: !Ref NlbSubnet01a
     Export:
-      Name: !Sub ${AWS::StackName}-alb-subnet1-id
-  ALBSubnet2Id:
-    Value: !Ref ALBSubnet2
+      Name: !Sub '${AWS::StackName}-NlbSubnet01a'
+
+  NlbSubnet01cId:
+    Description: Public Subnet 1c ID
+    Value: !Ref NlbSubnet01c
     Export:
-      Name: !Sub ${AWS::StackName}-alb-subnet2-id
+      Name: !Sub '${AWS::StackName}-NlbSubnet01c'
+
+  PrivateRouteTableId:
+    Description: Private Route Table ID
+    Value: !Ref PrivateRouteTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateRouteTable'
+
+  PublicRouteTableId:
+    Description: Public Route Table ID
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicRouteTable'
